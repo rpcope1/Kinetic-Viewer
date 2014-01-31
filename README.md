@@ -5,20 +5,22 @@ This is some basic viewer software for the upcoming Seagate Kinetic drives. This
 
 Among the features available or planned: |
 --------------------------------------------------------------------------------|
--Displays a list of all keys on the drive. |
--View the value for any of keys on the drive, simply by selecting the key. |
--Copy-to-clipboard buttons for any selected key or value |
--Graphical "Put" for easily putting new content to the drive. |
--Graphically delete any selected key:value pair from the drive. |
--Easy "erase entire drive" button for clearing everything. |
--Graphical display of drive logs. |
--Graphical ability to load new firmware onto the drive. |
--Settings to display keys and values as either hex or ASCII. |
+Displays a list of all keys on the drive. |
+View the value for any of keys on the drive, simply by selecting the key. |
+Copy-to-clipboard buttons for any selected key or value |
+Graphical "Put" for easily putting new content to the drive. |
+Graphically delete any selected key:value pair from the drive. |
+Easy "erase entire drive" button for clearing everything. |
+Graphical display of drive logs. |
+Graphical ability to load new firmware onto the drive. |
+Settings to display keys and values as either hex or ASCII. |
 
 
 The Kinetic Viewer software requires the host PC to have Python 2.7 installed, and for the Tkinter and Kinetic software libraries to be added. Kinetic Viewer can be launched by calling from the command line:
 
+```
 python KeyViewer.py
+```
 
 -OR-
 
