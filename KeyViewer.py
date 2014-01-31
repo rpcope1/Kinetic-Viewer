@@ -1,5 +1,5 @@
 from Tkinter import *
-from kinetic import Client
+from kinetic import Client, AdminClient
 import tkMessageBox
 #Using Threading with connect to decrease lockups.
 import threading
@@ -166,19 +166,19 @@ class KeyViewer(Frame):
 		self.DeleteButton = Button(self, text="Delete", command=self.DeleteKey, width=self.ButtonWidth)
 		self.DeleteButton.grid(row=2, column=0, sticky=E+W)
 
-		self.GetLogsButton = Button(self, text="Get Logs...", width=self.ButtonWidth)
+		self.GetLogsButton = Button(self, text="Get Logs...", command=self.GetLogs, width=self.ButtonWidth)
 		self.GetLogsButton.grid(row=2, column=1, sticky=E+W)
 
-		self.UpdateFirmwareButton = Button(self, text="Update Firmware", width=self.ButtonWidth)
+		self.UpdateFirmwareButton = Button(self, text="Update Firmware", command=self.UpgradeFirmware, width=self.ButtonWidth)
 		self.UpdateFirmwareButton.grid(row=2, column=2, sticky=E+W)
 
-		self.EraseDriveButton = Button(self, text="Erase Drive", width=self.ButtonWidth)
+		self.EraseDriveButton = Button(self, text="Erase Drive", command=self.EraseDrive, width=self.ButtonWidth)
 		self.EraseDriveButton.grid(row=2, column = 3, sticky=E+W)
 
 		self.AboutButton = Button(self, text="About...", command=self.About, width=self.ButtonWidth)
 		self.AboutButton.grid(row=2, column =4, sticky=E+W)
 
-		self.RepresentationButton = Button(self, text="Representation...", width=self.ButtonWidth)
+		self.RepresentationButton = Button(self, text="Representation...", command=self.SetRepresentation, width=self.ButtonWidth)
 		self.RepresentationButton.grid(row=2, column=self.ColumnsMax-1, sticky=E+W)
 
 		#!!!!!!!!!!!!!!!!!!!!
@@ -217,11 +217,13 @@ class KeyViewer(Frame):
 		if self.DriveAddress.get():
 			#Load up the kinetic client.
 			self.DriveClient = Client(self.DriveAddress.get(), self.DrivePort.get())
+			self.DriveAdminClient = AdminClient(self.DriveAddress.get(), self.DrivePort.get())
 			#Attempt to connect.
 			try:
 				self.DriveClient.connect()
+				self.DriveAdminClient.connect()
 				#If this connects, isConnected will return a socket, otherwise it will return None
-				if self.DriveClient.isConnected:
+				if self.DriveClient.isConnected and self.DriveAdminClient.isConnected:
 					self.StatusVar.set("Connected")
 					self.Refresh()
 				else:
@@ -237,10 +239,13 @@ class KeyViewer(Frame):
 		if self.DriveClient:
 			#Close the drive client,, return that the drive is disconnected, and set our Client pointer to None.
 			self.DriveClient.close()
+		if self.DriveAdminClient:
+			self.DriveAdminClient.close()
 		self.KeyList.GetListbox().delete(0, END)
 		self.ValueTextBox.GetText().delete("1.0", END)
 		self.StatusVar.set("Disconnected")
 		self.DriveClient = None
+		self.DriveAdminClient = None
 
 
 
@@ -259,6 +264,9 @@ class KeyViewer(Frame):
 
 
 	def CopyKey(self):
+		"""
+			Copy currently selected key into the clipboard
+		"""
 		if self.DriveClient and self.DriveClient.isConnected:
 			CurrentKey = self.KeyList.GetListbox().get(self.KeyList.GetListbox().curselection())
 			if CurrentKey:
@@ -269,7 +277,7 @@ class KeyViewer(Frame):
 
 	def CopyValue(self):
 		"""
-			Copy everything in the value box onto the clipboard.
+			Copy everything in the value box into the clipboard.
 		"""
 		if self.DriveClient and self.DriveClient.isConnected:
 			CurrentKey = self.KeyList.GetListbox().get(self.KeyList.GetListbox().curselection())
@@ -303,6 +311,36 @@ class KeyViewer(Frame):
 	def NotConnectedError(self):
 		errorMessage = "Not currently connected to any device!"
 		tkMessageBox.showerror("Not Connected!", errorMessage)
+
+	def EraseDrive(self):
+		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
+			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
+			if tkMessageBox.askokcancel("Erase Drive?", "WARNING: This will erase all drive data. Proceed?"):
+				self.DriveAdminClient.instantSecureErase()
+				self.Refresh()
+		else:
+			self.NotConnectedError()
+
+	def UpgradeFirmware(self):
+		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
+			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
+			if tkMessageBox.askokcancel("Upgrade Firmware?", "WARNING: This will upgrade the drive firmware. Proceed?"):
+				self.NotYetImplemented()
+		else:
+			self.NotConnectedError()
+
+	def GetLogs(self):
+		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
+			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
+			tkMessageBox.showinfo("Drive Logs", str(self.DriveAdminClient.getLog(range(0, 10))))
+		else:
+			self.NotConnectedError()
+
+	def SetRepresentation(self):
+		self.NotYetImplemented()
+
+	def NotYetImplemented(self):
+		tkMessageBox.showwarning("Feature Not Yet Implemented!", "Sorry, this feature hasn't been built in yet.")
 
 if __name__ == "__main__":
 	root = Tk()
