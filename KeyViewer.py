@@ -16,6 +16,44 @@ KEY_MAX_SIZE = 4*KiB
 MiB = 2**20
 VALUE_MAX_SIZE = 1*MiB
 
+class ListBoxScroll(Frame):
+	def __init__(self, parent, entries={}):
+		Frame.__init__(self, parent)
+		self.parent = parent
+		self.grid_rowconfigure(0, weight=1)
+		self.grid_columnconfigure(0, weight=1)
+
+		self.vscrollbar = Scrollbar(self, orient=VERTICAL)
+		self.vscrollbar.grid(row=0, column = 1, sticky=N+S)
+
+		self.lbox = Listbox(self, yscrollcommand=self.vscrollbar.set)
+		self.vscrollbar.config(command=self.lbox.yview)
+		for item in entries:
+			self.lbox.insert(END, item)
+		self.lbox.grid(row=0, column=0, sticky=N+S+E+W)
+
+	def GetListbox(self):
+		return self.lbox
+
+class ScrollText(Frame):
+	def __init__(self, parent, *args, **kwargs):
+		Frame.__init__(self, parent)
+		self.parent = parent
+		self.grid_rowconfigure(0, weight=1)
+		self.grid_columnconfigure(0, weight=1)
+
+		self.vscrollbar = Scrollbar(self, orient=VERTICAL)
+		self.vscrollbar.grid(row=0, column = 1, sticky=N+S)
+
+		self.tbox = Text(self, *args, **kwargs)
+		self.tbox.config(yscrollcommand=self.vscrollbar.set)
+		self.vscrollbar.config(command=self.tbox.yview)
+		self.tbox.grid(row=0, column=0, sticky=N+S+E+W)
+
+	def GetText(self):
+		return self.tbox
+
+
 class PutWindow(Toplevel):
 	ButtonWidth = 20
 	def __init__(self, parent):
@@ -54,42 +92,48 @@ class PutWindow(Toplevel):
 			self.destroy()
 
 
-class ListBoxScroll(Frame):
-	def __init__(self, parent, entries={}):
-		Frame.__init__(self, parent)
-		self.parent = parent
-		self.grid_rowconfigure(0, weight=1)
-		self.grid_columnconfigure(0, weight=1)
-		
-		self.vscrollbar = Scrollbar(self, orient=VERTICAL)
-		self.vscrollbar.grid(row=0, column = 1, sticky=N+S)
-		
-		self.lbox = Listbox(self, yscrollcommand=self.vscrollbar.set)
-		self.vscrollbar.config(command=self.lbox.yview)
-		for item in entries:
-			self.lbox.insert(END, item)
-		self.lbox.grid(row=0, column=0, sticky=N+S+E+W)
-	
-	def GetListbox(self):
-		return self.lbox
 
-class ScrollText(Frame):
-	def __init__(self, parent, *args, **kwargs):
-		Frame.__init__(self, parent)
+class DriveLogsWindow(Toplevel):
+	ButtonWidth = 20
+	def __init__(self, parent, logsString):
+		Toplevel.__init__(self, parent)
+		#Set up local variables, and grab the focus.
+		self.title("Drive Logs")
 		self.parent = parent
-		self.grid_rowconfigure(0, weight=1)
-		self.grid_columnconfigure(0, weight=1)
-		
-		self.vscrollbar = Scrollbar(self, orient=VERTICAL)
-		self.vscrollbar.grid(row=0, column = 1, sticky=N+S)
-		
-		self.tbox = Text(self, *args, **kwargs)
-		self.tbox.config(yscrollcommand=self.vscrollbar.set)
-		self.vscrollbar.config(command=self.tbox.yview)
-		self.tbox.grid(row=0, column=0, sticky=N+S+E+W)
-	
-	def GetText(self):
-		return self.tbox
+		self.grab_set()
+		#Focus_set keeps someone from working in the parent window while this is open...
+		#This is needed to stop interaction with the drive from doing weird things.
+		self.focus_set()
+		self.logs = logsString
+
+		#I set the grid row configure/column configure to allow resizing to happen with the log window.
+		self.grid_columnconfigure(0,weight=1)
+		self.grid_rowconfigure(1,weight=1)
+
+
+		Label(self, text="Logs output:").grid(row=0, column=0)
+
+		#The LogsBox is where we want to display the logs in the new Window.
+		self.LogsBox = ScrollText(self)
+		self.LogsBox.GetText().insert(1.0, logsString)
+		#Disable editing..
+		self.LogsBox.GetText().config(state=DISABLED)
+		self.LogsBox.grid(row=1, column=0, columnspan=2, sticky=N+S+E+W)
+
+		#Add a copy button and a close button.
+		self.CopyLogsButton = Button(self, text="Copy Logs", command=self.copyLogs, width=self.ButtonWidth)
+		self.CopyLogsButton.grid(row=2, column=0, sticky=W)
+
+		self.CloseButton = Button(self, text="Close", command=self.destroy, width=self.ButtonWidth)
+		self.CloseButton.grid(row=2, column=1, sticky=E)
+
+	def copyLogs(self):
+		#Copy the contents of the logString variable passed in to the clipboard.
+		self.clipboard_clear()
+		self.clipboard_append(self.LogsBox.GetText().get(1.0, END))
+
+
+
 		
 class KeyViewer(Frame):
 	#The width of all the buttons in the GUI.
@@ -195,22 +239,36 @@ class KeyViewer(Frame):
 		#!!!!!!!!!!!!!!!!!!!!
 		#Values
 		Label(self, text="Stored Value:").grid(row=5, column = 0)
-		self.ValueTextBox = ScrollText(self, width=64)
+		#I set the text box state to DISABLED to disallow editing.
+		self.ValueTextBox = ScrollText(self, width=64, state=DISABLED)
 		self.ValueTextBox.grid(row=6, column = 0, columnspan=self.ColumnsMax, sticky=E+W)
 		#Bind the value box to display the key on selecting a key.
 		self.KeyList.GetListbox().bind("<<ListboxSelect>>", self.GetAndDisplayValue)
 	
 	def __del__(self):
 		self.Disconnect()
-	
+
+	def ChangeValueBoxDisplay(self, s):
+		#Set the contnets of the value box.
+		self.ValueTextBox.GetText().config(state=NORMAL)
+		self.ValueTextBox.GetText().delete("1.0", END)
+		self.ValueTextBox.GetText().insert("1.0", s)
+		self.ValueTextBox.GetText().config(state=DISABLED)
+
 	def GetAndDisplayValue(self, *args):
+		#After we selected a key, come here and display something in the value textbox.
+		#This gets called as a trace on what the key list has selected (i.e. it gets called
+		#when the key selection changes).
 		kbox = self.KeyList.GetListbox()
+		#Grab the current key.
 		key = kbox.get(kbox.curselection())
+		#If a client is open try to get the value. If there's no value, clear the text box.
 		if self.DriveClient:
 			ReturnValue = self.DriveClient.get(key)
-			self.ValueTextBox.GetText().delete("1.0", END)
 			if ReturnValue:
-				self.ValueTextBox.GetText().insert("1.0", ReturnValue.value)
+				self.ChangeValueBoxDisplay(ReturnValue.value)
+			else:
+				self.ChangeValueBoxDisplay("")
 			
 		
 	def Connect(self):
@@ -242,23 +300,19 @@ class KeyViewer(Frame):
 		if self.DriveAdminClient:
 			self.DriveAdminClient.close()
 		self.KeyList.GetListbox().delete(0, END)
-		self.ValueTextBox.GetText().delete("1.0", END)
+		self.ChangeValueBoxDisplay("")
 		self.StatusVar.set("Disconnected")
 		self.DriveClient = None
 		self.DriveAdminClient = None
 
-
-
-	def ValueBoxCallback(self, *args):
-		pass
-		
-
 	def Refresh(self):
+		#This function gets called when we want to refresh what's in the key list, and
+		#clear the value box. This might get called after a put/delete etc.
 		if self.DriveClient and self.DriveClient.isConnected:
 			self.KeyList.GetListbox()
 			self.KeyList.GetListbox().delete(0, END)
 			self.KeyList.GetListbox().insert(0, *self.DriveClient.getKeyRange('', KEY_MAX))
-			self.ValueTextBox.GetText().delete("1.0", END)
+			self.ChangeValueBoxDisplay("")
 		else:
 			self.NotConnectedError()
 
@@ -268,8 +322,9 @@ class KeyViewer(Frame):
 			Copy currently selected key into the clipboard
 		"""
 		if self.DriveClient and self.DriveClient.isConnected:
-			CurrentKey = self.KeyList.GetListbox().get(self.KeyList.GetListbox().curselection())
-			if CurrentKey:
+			selection = self.KeyList.GetListbox().curselection()
+			if selection:
+				CurrentKey = self.KeyList.GetListbox().get(selection)
 				self.parent.clipboard_clear()
 				self.parent.clipboard_append(CurrentKey)
 		else:
@@ -332,7 +387,7 @@ class KeyViewer(Frame):
 	def GetLogs(self):
 		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
 			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
-			tkMessageBox.showinfo("Drive Logs", str(self.DriveAdminClient.getLog(range(0, 10))))
+			DriveLogsWindow(self, str(self.DriveAdminClient.getLog(range(0, 10))))
 		else:
 			self.NotConnectedError()
 
