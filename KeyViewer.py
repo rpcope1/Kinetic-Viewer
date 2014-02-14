@@ -1,5 +1,6 @@
 from Tkinter import *
 from kinetic import Client, AdminClient
+import kinetic
 import tkMessageBox
 #Using Threading with connect to decrease lockups.
 import threading
@@ -387,7 +388,7 @@ class KeyViewer(Frame):
 	def GetLogs(self):
 		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
 			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
-			DriveLogsWindow(self, str(self.DriveAdminClient.getLog(range(0, 10))))
+			DriveLogsWindow(self, str(self.DriveAdminClient.getLog(kinetic.common.LogTypes.all())))
 		else:
 			self.NotConnectedError()
 
