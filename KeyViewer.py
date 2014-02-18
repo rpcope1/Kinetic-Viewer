@@ -1,11 +1,12 @@
 from Tkinter import *
 from kinetic import Client, AdminClient
 import kinetic
-import tkMessageBox
+import tkMessageBox, tkFileDialog, tkSimpleDialog
 #Using Threading with connect to decrease lockups.
 import threading
 import time
 import sys
+#Need to add error logging...
 
 #The Kinetic drive should accept all keys up to 4 KiB in size.
 #Kinetic sorts in lexographical order, so the last possible key is probably chr(255)*4*KiB
@@ -370,7 +371,6 @@ class KeyViewer(Frame):
 
 	def EraseDrive(self):
 		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
-			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
 			if tkMessageBox.askokcancel("Erase Drive?", "WARNING: This will erase all drive data. Proceed?"):
 				self.DriveAdminClient.instantSecureErase()
 				self.Refresh()
@@ -379,9 +379,10 @@ class KeyViewer(Frame):
 
 	def UpgradeFirmware(self):
 		if self.DriveAdminClient and self.DriveAdminClient.isConnected:
-			#Do not ask me why the getLog command works like that. I'm not totally sure why it needs an iterator...
 			if tkMessageBox.askokcancel("Upgrade Firmware?", "WARNING: This will upgrade the drive firmware. Proceed?"):
-				self.NotYetImplemented()
+				filename = tkFileDialog.askopenfilename(parent=self, title="Select Firmware")
+				pin = tkSimpleDialog.askstring("Get Admin Pin", "Please enter the admin pin, if set (default is none)", parent=self)
+				self.loadCode(self.DriveAdminClient, filename, pin)
 		else:
 			self.NotConnectedError()
 
@@ -398,6 +399,21 @@ class KeyViewer(Frame):
 	def NotYetImplemented(self):
 		tkMessageBox.showwarning("Feature Not Yet Implemented!", "Sorry, this feature hasn't been built in yet.")
 
+		
+	def loadCode(self, driveAdminClient, firmwarePath, pin = None):
+		try:
+			data = None
+			with open(firmwarePath, 'rb') as f:
+				data = f.read()
+			if data:
+				driveAdminClient.updateFirmware(data, pin)
+			else:
+				log.error("Bad file loaded!")
+				raise IOError("Bad file loaded!")
+			return True
+		except Exception as e:
+			tkMessageBox.showerror("Failed to load new Kinetic binary to drive!\nError raised: " + str(e))
+		
 if __name__ == "__main__":
 	root = Tk()
 	root.title("Kinetic Viewer")
